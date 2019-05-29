@@ -3,60 +3,61 @@ import requests
 from bs4 import BeautifulSoup
 from urllib import request
 
-
 site = 'http://example.com'
-
 response = requests.get(site).text
-#response = response.encode('latin-1')
-
+response = response.encode('utf-8')
 soup = BeautifulSoup(response, 'html.parser')
+offer_url = site["needed index"] #allows to get specific part of URL to name directory
 
-link_tags = soup.find_all('link')
-script_tags = soup.find_all('script')
-count = 0
+def links_replacement(tag, path):         #replaces path to js/imgs/css in html body
+    tag_list = soup.find_all(tag)
+    for link in tag_list:
+        if 'src' in link.attrs:
+            new_link = link['src'].split('/')
+            link['src'] = os.path.join(path, new_link[-1])
+
+def div_extract(class_name):                #removes unnecessary blocks  
+    class_name = soup.find_all('div', class_=class_name)
+    [div.extract() for div in class_name]
+
+def files_download(tag, attr, path):
+    tag_list = soup.find_all(tag)
+    items = [link[attr] for link in tag_list if attr in link.attrs]
+    for item in items:
+        if len(item) > 0:
+            if '.' in item[-3] or '.' in item[-4]:         #this line checks for extension in link
+                if '//' not in item:
+                    item_url = site[:24] + item
+                    print(item_url)
+                    request.urlretrieve(item_url, filename=f"{path}/{os.path.basename(item_url)}")
+
+div_extract('example_block')
 
 
-header = soup.find_all('div', class_='header')
-footer = soup.find_all('div', class_='footer')
-menu = soup.find_all('div', class_='bmMenu')
-call_to_action = soup.find_all('div', class_='callToActionAllArea')
-[div.extract() for div in menu]
-[div.extract() for div in header]
-[div.extract() for div in footer]
-[div.extract() for div in call_to_action]
+files_download('script', 'src', f'path/to/{offer_url}')
+files_download('link', 'href', f'path/to{offer_url}')
+files_download('img', 'src', f'path/to{offer_url}/images')
 
-
-links = [link['href'] for link in link_tags]
-for link in links:
-    if '.css' in link:
-        count += 1
-        link_url = 'http://example.com'+link
-        request.urlretrieve(link_url, filename=f'offer/style{count}.css')
-
-
-with open(f'offer/{site[34:]}.css', 'w') as style_file:
-    for file in os.listdir('offer'):
+#containing all styles from all css files to one
+with open(f'path/to/styles/{offer_url}.css', 'w') as style_file: #added additional 'styles' dir to path to prevent style_file from looping
+    for file in os.listdir(f'path/to{offer_url}'):
         if '.css' in file:
-            with open(f'offer/{file}', 'r+') as f:
+            with open(f'path/to/{offer_url}/{file}', 'r+') as f:
                 for line in f:
                     style_file.write(line)
+for css in os.listdir(f'path/to/{offer_url}/'):  #removes unnecessary css
+    if '.css' in css:
+        os.remove(f"path/to/{offer_url}/{css}")
 
-
-with open('offer/result.html', 'w+', encoding='utf-8') as result_file:
-    img_tags = soup.find_all('img')
-    pics = [img['src'] for img in img_tags]
-    for pic in pics:
-        if '//' not in pic:
-            count += 1
-            pic_url = 'http://example.com' + pic
-            request.urlretrieve(pic_url, filename=f"offer/images/{os.path.basename(pic_url)}")
-    for link in img_tags:
-        new_link = link['src']
-        new_link = new_link.split('/')
-        new_link = os.path.join('images/', new_link[-1])
-        link['src'] = new_link
+with open(f'path/to/{offer_url}/result.html', 'w+', encoding='utf-8') as result_file:
+    links_replacement('img', f'/path/to/{offer_url}/images/')
+    links_replacement('script', '/path/to/')
     result = soup.body
     result_file.write(str(result))
+
+
+
+
 
 
 
